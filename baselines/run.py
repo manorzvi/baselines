@@ -31,7 +31,7 @@ except ImportError:
 _game_envs = defaultdict(set)
 for env in gym.envs.registry.all():
     # TODO: solve this with regexes
-    env_type = env.entry_point.split(':')[0].split('.')[-1]
+    env_type = env._entry_point.split(':')[0].split('.')[-1]
     _game_envs[env_type].add(env.id)
 
 # reading benchmark names directly from retro requires
@@ -62,7 +62,9 @@ def train(args, extra_args):
 
     env = build_env(args)
     if args.save_video_interval != 0:
-        env = VecVideoRecorder(env, osp.join(logger.get_dir(), "videos"), record_video_trigger=lambda x: x % args.save_video_interval == 0, video_length=args.save_video_length)
+        env = VecVideoRecorder(env, osp.join(logger.get_dir(), "videos"),
+                               record_video_trigger=lambda x: x % args.save_video_interval == 0,
+                               video_length=args.save_video_length)
 
     if args.network:
         alg_kwargs['network'] = args.network
@@ -76,6 +78,8 @@ def train(args, extra_args):
         env=env,
         seed=seed,
         total_timesteps=total_timesteps,
+        save_interval=args.save_interval,  # manorz, 05/24/21 18:45
+        save_path=args.save_path,  # manorz, 05/24/21 18:45
         **alg_kwargs
     )
 
@@ -103,7 +107,8 @@ def build_env(args):
 
     else:
         flatten_dict_observations = alg not in {'her'}
-        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale, flatten_dict_observations=flatten_dict_observations)
+        env = make_vec_env(env_id, env_type, args.num_env or 1, seed, reward_scale=args.reward_scale,
+                           flatten_dict_observations=flatten_dict_observations)
 
         if env_type == 'mujoco':
             env = VecNormalize(env)
@@ -119,7 +124,7 @@ def get_env_type(args):
 
     # Re-parse the gym registry, since we could have new envs since last time.
     for env in gym.envs.registry.all():
-        env_type = env.entry_point.split(':')[0].split('.')[-1]
+        env_type = env._entry_point.split(':')[0].split('.')[-1]
         _game_envs[env_type].add(env.id)  # This is a set so add is idempotent
 
     if env_id in _game_envs.keys():
@@ -143,6 +148,7 @@ def get_default_network(env_type):
         return 'cnn'
     else:
         return 'mlp'
+
 
 def get_alg_module(alg, submodule=None):
     submodule = submodule or alg
@@ -169,11 +175,11 @@ def get_learn_function_defaults(alg, env_type):
     return kwargs
 
 
-
 def parse_cmdline_kwargs(args):
     '''
     convert a list of '='-spaced command-line arguments to a dictionary, evaluating python objects when possible
     '''
+
     def parse(v):
 
         assert isinstance(v, str)
@@ -182,7 +188,7 @@ def parse_cmdline_kwargs(args):
         except (NameError, SyntaxError):
             return v
 
-    return {k: parse(v) for k,v in parse_unknown_args(args).items()}
+    return {k: parse(v) for k, v in parse_unknown_args(args).items()}
 
 
 def configure_logger(log_path, **kwargs):
@@ -198,6 +204,9 @@ def main(args):
     arg_parser = common_arg_parser()
     args, unknown_args = arg_parser.parse_known_args(args)
     extra_args = parse_cmdline_kwargs(unknown_args)
+
+    if args.save_path is not None and args.save_interval == 0:
+        logger.warn(f"save_path is not None ({args.save_path}) but save_interval disabled (will not save the model during training)")
 
     if MPI is None or MPI.COMM_WORLD.Get_rank() == 0:
         rank = 0
@@ -227,7 +236,7 @@ def main(args):
             if state is not None:
                 actions, _, state, _ = model.step(obs)
             else:
-              actions, _, _, _ = model.step(obs)
+                actions, _, _, _ = model.step(obs)
 
             obs, rew, done, _ = env.step(actions.numpy())
             if not isinstance(env, VecEnv):
@@ -243,6 +252,7 @@ def main(args):
     env.close()
 
     return model
+
 
 if __name__ == '__main__':
     main(sys.argv)

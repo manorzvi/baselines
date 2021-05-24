@@ -13,8 +13,8 @@ from baselines.ppo2.ppo2 import safemean
 import os.path as osp
 from collections import deque
 
-class Model(tf.keras.Model):
 
+class Model(tf.keras.Model):
     """
     We use this class to :
         __init__:
@@ -27,10 +27,10 @@ class Model(tf.keras.Model):
         save/load():
         - Save load the model
     """
-    def __init__(self, *, ac_space, policy_network, nupdates,
-            ent_coef=0.01, vf_coef=0.5, max_grad_norm=0.5, lr=7e-4,
-            alpha=0.99, epsilon=1e-5, total_timesteps=int(80e6)):
 
+    def __init__(self, *, ac_space, policy_network, nupdates,
+                 ent_coef=0.01, vf_coef=0.5, max_grad_norm=0.5, lr=7e-4,
+                 alpha=0.99, epsilon=1e-5, total_timesteps=int(80e6)):
         super(Model, self).__init__(name='A2CModel')
         self.train_model = PolicyWithValue(ac_space, policy_network, value_network=None, estimate_q=False)
         lr_schedule = InverseLinearTimeDecay(initial_learning_rate=lr, nupdates=nupdates)
@@ -66,24 +66,25 @@ class Model(tf.keras.Model):
 
 
 def learn(
-    network,
-    env,
-    seed=None,
-    nsteps=5,
-    total_timesteps=int(80e6),
-    vf_coef=0.5,
-    ent_coef=0.01,
-    max_grad_norm=0.5,
-    lr=7e-4,
-    lrschedule='linear',
-    epsilon=1e-5,
-    alpha=0.99,
-    gamma=0.99,
-    log_interval=100,
-    load_path=None,
-    **network_kwargs):
-
-    '''
+        network,
+        env,
+        seed=None,
+        nsteps=5,
+        total_timesteps=int(80e6),
+        vf_coef=0.5,
+        ent_coef=0.01,
+        max_grad_norm=0.5,
+        lr=7e-4,
+        lrschedule='linear',
+        epsilon=1e-5,
+        alpha=0.99,
+        gamma=0.99,
+        log_interval=100,
+        load_path=None,
+        save_interval=None,
+        save_path=None,
+        **network_kwargs):
+    """
     Main entrypoint for A2C algorithm. Train a policy with given network architecture on a given environment using a2c algorithm.
 
     Parameters:
@@ -128,9 +129,7 @@ def learn(
     **network_kwargs:   keyword arguments to the policy / network builder. See baselines.common/policies.py/build_policy and arguments to a particular type of network
                         For instance, 'mlp' network architecture has arguments num_hidden and num_layers.
 
-    '''
-
-
+    """
 
     set_global_seeds(seed)
 
@@ -153,8 +152,9 @@ def learn(
     nupdates = total_timesteps // nbatch
 
     # Instantiate the model object (that creates step_model and train_model)
-    model = Model(ac_space=ac_space, policy_network=policy_network, nupdates=nupdates, ent_coef=ent_coef, vf_coef=vf_coef,
-        max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps)
+    model = Model(ac_space=ac_space, policy_network=policy_network, nupdates=nupdates, ent_coef=ent_coef,
+                  vf_coef=vf_coef,
+                  max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps)
 
     if load_path is not None:
         load_path = osp.expanduser(load_path)
@@ -169,7 +169,7 @@ def learn(
     # Start total timer
     tstart = time.time()
 
-    for update in range(1, nupdates+1):
+    for update in range(1, nupdates + 1):
         # Get mini batch of experiences
         obs, states, rewards, masks, actions, values, epinfos = runner.run()
         epinfobuf.extend(epinfos)
@@ -182,16 +182,16 @@ def learn(
         actions = tf.constant(actions)
         values = tf.constant(values)
         policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values)
-        nseconds = time.time()-tstart
+        nseconds = time.time() - tstart
 
         # Calculate the fps (frame per second)
-        fps = int((update*nbatch)/nseconds)
+        fps = int((update * nbatch) / nseconds)
         if update % log_interval == 0 or update == 1:
             # Calculates if value function is a good predicator of the returns (ev > 1)
             # or if it's just worse than predicting nothing (ev =< 0)
             ev = explained_variance(values, rewards)
             logger.record_tabular("nupdates", update)
-            logger.record_tabular("total_timesteps", update*nbatch)
+            logger.record_tabular("total_timesteps", update * nbatch)
             logger.record_tabular("fps", fps)
             logger.record_tabular("policy_entropy", float(policy_entropy))
             logger.record_tabular("value_loss", float(value_loss))
@@ -199,5 +199,12 @@ def learn(
             logger.record_tabular("eprewmean", safemean([epinfo['r'] for epinfo in epinfobuf]))
             logger.record_tabular("eplenmean", safemean([epinfo['l'] for epinfo in epinfobuf]))
             logger.dump_tabular()
-    return model
 
+        if save_path is not None and save_interval is not None and save_interval > 0:
+            if update % save_interval == 0 or update == 1:
+                logger.info(f"save model on update {update}")
+                save_path = osp.expanduser(save_path)
+                ckpt = tf.train.Checkpoint(model=model)
+                manager = tf.train.CheckpointManager(ckpt, save_path, max_to_keep=10)
+                manager.save()
+    return model
