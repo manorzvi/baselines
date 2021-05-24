@@ -12,12 +12,12 @@ envs="BreakoutNoFrameskip-v4 PongNoFrameskip-v4 SeaquestNoFrameskip-v4"
 for alg in $algs; do
   for len in $lengths; do
     for env in $envs; do
-      cmd="$HOME/baselines/baselines/run.py --alg=$alg --env=$env --num_timesteps=$len --log_path=./logs/$env/$alg/$len --save_path=./models/$env/$alg/$len --save_interval=10000"
+      cmd=" baselines.run --alg=$alg --env=$env --num_timesteps=$len --log_path=./logs/$env/$alg/$len --save_path=./models/$env/$alg/$len --save_interval=10000"
       echo $cmd
-      python $cmd
-      git add -A
-      git commit -m "from Lambda with love"
-      git push
+      python -m $cmd
+      #git add -A
+      #git commit -m "from Lambda with love"
+      #git push
     done
   done
 done
