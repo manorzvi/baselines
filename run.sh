@@ -12,7 +12,7 @@ envs="BreakoutNoFrameskip-v4 PongNoFrameskip-v4 SeaquestNoFrameskip-v4"
 for alg in $algs; do
   for len in $lengths; do
     for env in $envs; do
-      cmd="/home/manorzvi/baselines/baselines/run.py --alg=$alg --env=$env --num_timesteps=$len --log_path=./logs/$env/$alg/$len --save_path=./models/$env/$alg/$len --save_interval=10000"
+      cmd="$HOME/baselines/baselines/run.py --alg=$alg --env=$env --num_timesteps=$len --log_path=./logs/$env/$alg/$len --save_path=./models/$env/$alg/$len --save_interval=10000"
       echo $cmd
       python $cmd
       git add -A
