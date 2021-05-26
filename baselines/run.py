@@ -80,6 +80,7 @@ def train(args, extra_args):
         total_timesteps=total_timesteps,
         save_interval=args.save_interval,  # manorz, 05/24/21 18:45
         save_path=args.save_path,  # manorz, 05/24/21 18:45
+        debug_env=args.debug_env,
         **alg_kwargs
     )
 
@@ -102,7 +103,7 @@ def build_env(args):
             env = make_env(env_id, env_type, seed=seed)
         else:
             frame_stack_size = 4
-            env = make_vec_env(env_id, env_type, nenv, seed, gamestate=args.gamestate, reward_scale=args.reward_scale)
+            env = make_vec_env(env_id, env_type, nenv, seed, gamestate=args.gamestate, reward_scale=args.reward_scale, diff_env_wrapper=args.diff_env_wrapper)
             env = VecFrameStack(env, frame_stack_size)
 
     else:
@@ -197,6 +198,7 @@ def configure_logger(log_path, **kwargs):
     else:
         logger.configure(**kwargs)
 
+import time
 
 def main(args):
     # configure logger, disable logging in child MPI processes (with rank > 0)
@@ -243,6 +245,7 @@ def main(args):
                 obs = np.expand_dims(np.array(obs), axis=0)
             episode_rew += rew
             env.render()
+            time.sleep(0.04)
             done_any = done.any() if isinstance(done, np.ndarray) else done
             if done_any:
                 for i in np.nonzero(done)[0]:

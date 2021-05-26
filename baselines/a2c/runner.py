@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import matplotlib.pyplot as plt
 from baselines.a2c.utils import discount_with_dones
 from baselines.common.runners import AbstractEnvRunner
 
@@ -13,9 +14,10 @@ class Runner(AbstractEnvRunner):
     run():
     - Make a mini batch of experiences
     """
-    def __init__(self, env, model, nsteps=5, gamma=0.99):
+    def __init__(self, env, model, nsteps=5, gamma=0.99, debug_env=None):
         super().__init__(env=env, model=model, nsteps=nsteps)
         self.gamma = gamma
+        self.debug_env = debug_env
 
     def run(self):
         # We initialize the lists that will contain the mb of experiences
@@ -26,6 +28,19 @@ class Runner(AbstractEnvRunner):
             # Given observations, take action and value (V(s))
             # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
             obs = tf.constant(self.obs)
+            if self.debug_env:
+                ob = self.obs[0, ...]
+                ob0 = ob[..., 0]
+                ob1 = ob[..., 1]
+                ob2 = ob[..., 2]
+                ob3 = ob[..., 3]
+                fig, ax = plt.subplots(2,2)
+                ax[0,0].imshow(ob0)
+                ax[0,1].imshow(ob1)
+                ax[1,0].imshow(ob2)
+                ax[1,1].imshow(ob3)
+                plt.show()
+
             actions, values, self.states, _ = self.model.step(obs)
             actions = actions._numpy()
             # Append the experiences

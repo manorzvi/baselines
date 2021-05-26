@@ -83,6 +83,7 @@ def learn(
         load_path=None,
         save_interval=None,
         save_path=None,
+        debug_env=None,
         **network_kwargs):
     """
     Main entrypoint for A2C algorithm. Train a policy with given network architecture on a given environment using a2c algorithm.
@@ -163,7 +164,7 @@ def learn(
         ckpt.restore(manager.latest_checkpoint)
 
     # Instantiate the runner object
-    runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
+    runner = Runner(env, model, nsteps=nsteps, gamma=gamma, debug_env=debug_env)
     epinfobuf = deque(maxlen=100)
 
     # Start total timer
